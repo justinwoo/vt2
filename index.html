@@ -1,0 +1,141 @@
+<script src="./dist/vue.js"></script>
+<title>vidtracker</title>
+
+<div id="app">
+  <h1>vidtracker</h1>
+  <div class="header">
+    <div class="info">
+      <h3><span>Info:</span></h3>
+      <span>o: open current file</span>
+      <span>k: move cursor up</span>
+      <span>j: move cursor down</span>
+      <span>W/M: mark as watched</span>
+      <span>r: refresh</span>
+      <span>I: fetch icons and reload page</span>
+      <span>files loading: {{ loading }}</span>
+      <span>icons loading: {{ iconsLoading }}</span>
+    </div>
+    <div class="recents">
+      <h3><span>Recently watched:</span></h3>
+      <div v-for="recent in recents">
+        <div class="recent">
+          <span>{{ recent.name }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div v-for="file in files">
+    <div
+      class="file"
+      v-bind:class="{ 'done': file.watched, 'cursor': cursor === file.idx }"
+      v-bind:title="'latest watched: ' + file.latest"
+    >
+      <div class="icon" v-bind:style="file.style"></div>
+      <div class="name" v-bind:data-title="file.title" v-on:click="openFile(file)">{{ file.title }}</div>
+      <div class="watched" v-on:click="toggleWatched(file)">
+        <span v-if="file.watched">watched: {{ file.watched }}</span>
+        <span v-else>
+          <span v-if="file.latest != null">last: {{ file.latest }}</span>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="./client.js"></script>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: "Noto Sans CJK JP";
+    max-width: 900px;
+    margin: auto;
+    padding: 1rem;
+  }
+
+  .header {
+    display: flex;
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+  }
+
+  .info {
+    flex: 1;
+  }
+
+  .recents {
+    flex: 2;
+  }
+
+  .info span {
+    display: block;
+  }
+
+  .recents {
+    text-align: right;
+  }
+
+  .file {
+    /* display: flex; */
+    /* align-items: center; */
+    border: 1px solid white;
+    display: grid;
+    align-items: center;
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .file.done {
+    background: rgba(0, 255, 0, 0.05);
+  }
+
+  .file.cursor {
+    border: 1px solid black;
+    background: rgba(255, 0, 0, 0.2);
+  }
+
+  .file.done.cursor {
+    background: rgba(255, 100, 0, 0.2);
+  }
+
+  .name,
+  .watched {
+    padding: 0.5rem;
+    cursor: pointer;
+  }
+
+  .name:hover,
+  .watched:hover {
+    text-decoration: underline;
+  }
+
+  .file .watched:hover:before {
+    content: "mark watched - ";
+  }
+
+  .file.done .watched:hover:before {
+    content: "";
+  }
+
+  .icon {
+    width: 4rem;
+    height: 2rem;
+    border: 1px solid grey;
+    border-radius: 2rem;
+    background-size: cover;
+    background-position: 50% 50%;
+    background-repeat: no-repeat;
+  }
+
+  .name {
+    flex: 1;
+  }
+
+  .watched {
+    width: 20rem;
+    text-align: right;
+  }
+</style>
