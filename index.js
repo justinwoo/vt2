@@ -24,27 +24,37 @@ function getRequestListener({ config, db }) {
   return async function requestListener(req, res) {
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
+
+      // ----- static files -----
       if (url.pathname === "/" || url.pathname === "/index.html") {
         const file = await fs.readFile(__dirname + "/index.html");
-        sendContent(res, "text/html", file);
-      } else if (url.pathname === "/client.js") {
-        const file = await fs.readFile(__dirname + "/client.js");
-        sendContent(res, "application/javascript", file);
-      } else if (url.pathname === "/favicon.ico") {
+        return sendContent(res, "text/html", file);
+      }
+
+      if (url.pathname === "/favicon.ico") {
         const file = await fs.readFile(__dirname + url.pathname);
-        sendContent(res, "", file);
-      } else if (url.pathname.indexOf("/dist") === 0) {
+        return sendContent(res, "", file);
+      }
+
+      if (url.pathname.indexOf("/dist") === 0) {
         const file = await fs.readFile(
           __dirname + decodeURIComponent(url.pathname)
         );
-        sendContent(res, "", file);
-      } else if (url.pathname === "/watched") {
+        return sendContent(res, "", file);
+      }
+
+      // ----- api -----
+      if (url.pathname === "/watched") {
         const watched = await getWatched(db);
-        sendJSON(res, watched);
-      } else if (url.pathname === "/files") {
+        return sendJSON(res, watched);
+      }
+
+      if (url.pathname === "/files") {
         const files = await getFiles(config);
-        sendJSON(res, files);
-      } else if (url.pathname === "/icons") {
+        return sendJSON(res, files);
+      }
+
+      if (url.pathname === "/icons") {
         const files = await getFiles(config);
         const names = files.reduce((acc, file) => {
           let { series } = parseFilename(file);
@@ -54,12 +64,16 @@ function getRequestListener({ config, db }) {
           return acc;
         }, []);
         await getIcons(names);
-        sendJSON(res, {});
-      } else if (url.pathname.indexOf("/open") === 0) {
+        return sendJSON(res, {});
+      }
+
+      if (url.pathname.indexOf("/open") === 0) {
         const name = url.searchParams.get("name");
         open(config, decodeURIComponent(name));
-        sendJSON(res, {});
-      } else if (url.pathname.indexOf("/update") === 0) {
+        return sendJSON(res, {});
+      }
+
+      if (url.pathname.indexOf("/update") === 0) {
         const name = url.searchParams.get("name");
         const watched = url.searchParams.get("watched");
         const filename = decodeURIComponent(name);
@@ -68,11 +82,13 @@ function getRequestListener({ config, db }) {
         } else {
           deleteWatched(db, filename);
         }
-        sendJSON(res, {});
+        return sendJSON(res, {});
       } else {
         const obj = "hello";
-        sendJSON(res, obj);
+        return sendJSON(res, obj);
       }
+
+      // errors don't matter
     } catch (e) {
       if (e.code && e.code == "ENOENT") {
         res.writeHead(404);
@@ -80,7 +96,7 @@ function getRequestListener({ config, db }) {
         console.error(e);
         res.writeHead(500);
       }
-      res.end();
+      return res.end();
     }
   };
 }
@@ -107,8 +123,8 @@ async function getIcons(names) {
           .then((_) => true)
           .catch((_) => false);
         if (exists) {
-          res();
           return;
+          res();
         } else {
           for (let name in names) {
             let process = cp.spawn("get-icons", [name, iconPath]);
