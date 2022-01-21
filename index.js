@@ -24,8 +24,6 @@ function getRequestListener({ config, db }) {
   return async function requestListener(req, res) {
     try {
       const url = new URL(req.url, `http://${req.headers.host}`);
-      console.log(`pathname: ${url.pathname}`);
-
       if (url.pathname === "/" || url.pathname === "/index.html") {
         const file = await fs.readFile(__dirname + "/index.html");
         sendContent(res, "text/html", file);
