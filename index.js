@@ -105,12 +105,13 @@ function open(config, name) {
   cp.spawn(config.exe, [path.join(config.dir, name)]);
 }
 
-const nameEpisodeRegex = /\[.*\] (.*) - (\d+) [\[\(].+[\)\]]+.*\.mkv/;
+const nameEpisodeRegex =
+  /\[.*\] (.*) - (\d+\.*[\.v]*[\d]*) [\[\(].+[\)\]]+.*\.mkv/;
+
 function parseFilename(filename) {
   let matches = filename.match(nameEpisodeRegex);
   let series = matches && matches.length > 1 ? matches[1] : "n/a";
-  let episode = matches && matches.length > 2 ? parseInt(matches[2]) : null;
-  return { series, episode };
+  return { series };
 }
 
 async function getIcons(names) {

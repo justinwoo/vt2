@@ -148,12 +148,19 @@
 </style>
 
 <script>
-  const nameEpisodeRegex = /\[.*\] (.*) - (\d+) [\[\(].+[\)\]]+.*\.mkv/;
+  const nameEpisodeRegex =
+    /\[.*\] (.*) - (\d+\.*[\.v]*[\d]*) [\[\(].+[\)\]]+.*\.mkv/;
+
+  function parseEpisodeNumber(string) {
+    string = string.replace("v", ".");
+    return parseFloat(string);
+  }
 
   function parseFilename(filename) {
     let matches = filename.match(nameEpisodeRegex);
     let series = matches && matches.length > 1 ? matches[1] : "n/a";
-    let episode = matches && matches.length > 2 ? parseInt(matches[2]) : null;
+    let episode =
+      matches && matches.length > 2 ? parseEpisodeNumber(matches[2]) : null;
     return { series, episode };
   }
 
