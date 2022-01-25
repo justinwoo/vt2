@@ -14,6 +14,8 @@
       <span>I: fetch icons and reload page</span>
       <span>files loading: {{ loading }}</span>
       <span>icons loading: {{ iconsLoading }}</span>
+      <span v-if="!groupBySeries">g: group by series</span>
+      <span v-else>g: turn off group by series</span>
     </div>
     <div class="recents">
       <h3><span>Recently watched:</span></h3>
@@ -197,6 +199,26 @@
     return withLatest;
   }
 
+  function groupBySeries(files) {
+    let series = {};
+    let idx = 0;
+    for (let file of files) {
+      if (series[file.series]) {
+        series[file.series].push(file);
+      } else {
+        series[file.series] = [file];
+      }
+    }
+    let output = [];
+    for (let key in series) {
+      let subFiles = series[key];
+      subFiles.sort((a, b) => b.episode - a.episode);
+      subFiles.map((f) => (f.idx = idx++));
+      output = output.concat(subFiles);
+    }
+    return output;
+  }
+
   async function fetchFilenames() {
     const res = await fetch("/files");
     const json = await res.json();
@@ -230,9 +252,11 @@
         loading: true,
         iconsLoading: false,
         files: [],
+        filenames: [],
         watched: [],
         recents: [],
         cursor: -1,
+        groupBySeries: false,
       },
       created() {
         this.fetchData();
@@ -245,10 +269,17 @@
             fetchFilenames(),
             fetchWatched(),
           ]);
-          this.loading = false;
-          this.files = getFiles(filenames, watched);
+          this.filenames = filenames;
           this.watched = watched;
-          this.recents = watched.slice(0, 8);
+          this.recents = watched.slice(0, 9);
+          this.recalculate();
+        },
+        recalculate() {
+          this.loading = false;
+          this.files = getFiles(this.filenames, this.watched);
+          if (this.groupBySeries) {
+            this.files = groupBySeries(this.files);
+          }
         },
         async openFile(file) {
           this.cursor = file.idx;
@@ -305,6 +336,10 @@
             }
             if (e.key === "I") {
               this.sendGetIcons();
+            }
+            if (e.key === "g") {
+              this.groupBySeries = !this.groupBySeries;
+              this.recalculate();
             }
           });
         },
