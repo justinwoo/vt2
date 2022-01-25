@@ -35,6 +35,7 @@
       <div
         class="name"
         v-bind:data-title="file.title"
+        v-bind:data-series="file.series"
         v-on:click="openFile(file)"
       >
         {{ file.title }}
@@ -174,7 +175,7 @@
 
       let origin = window.location.origin;
       let encoded = encodeURIComponent(series);
-      let backgroundImage = `url('${origin}/dist/icons/${encoded}')`;
+      let backgroundImage = `url("${origin}/dist/icons/${encoded}")`;
 
       return {
         idx,
