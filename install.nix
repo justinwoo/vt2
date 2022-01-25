@@ -1,5 +1,5 @@
 #!/usr/bin/env nix-shell
-#!nix-shell install.nix
+#!nix-shell install.nix --run install-systemd-unit
 
 { pkgs ? import <nixpkgs> { }
 , user ? "justin"
@@ -42,8 +42,4 @@ pkgs.mkShell {
   buildInputs = [
     install-systemd-unit
   ];
-
-  shellHook = ''
-    ${install-systemd-unit}/bin/install-systemd-unit
-  '';
 }

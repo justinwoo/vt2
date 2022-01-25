@@ -114,30 +114,20 @@ function parseFilename(filename) {
 }
 
 async function getIcons(names) {
-  return await Promise.all(
-    names.map((name) => {
-      return new Promise(async (res) => {
-        const iconPath = path.join("./dist/icons", name);
-        let exists = await fs
-          .stat(iconPath)
-          .then((_) => true)
-          .catch((_) => false);
-        if (exists) {
-          return;
+  for await (let name of names) {
+    const iconPath = path.join("./dist/icons", name);
+    let exists = await fs.stat(iconPath).catch((_) => false);
+    if (!exists) {
+      console.log(`Fetching icon for ${name}`);
+      await new Promise((res) => {
+        let process = cp.spawn("get-icons", [name, iconPath]);
+        process.on("exit", (code) => {
+          console.log(`Fetched icon for ${name}`, code);
           res();
-        } else {
-          for (let name in names) {
-            let process = cp.spawn("get-icons", [name, iconPath]);
-            process.on("exit", (code) => {
-              console.log(`Fetched icon for ${name}`, code);
-              res();
-            });
-            return;
-          }
-        }
+        });
       });
-    })
-  );
+    }
+  }
 }
 
 async function getFiles(config) {
