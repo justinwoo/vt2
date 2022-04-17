@@ -58,24 +58,18 @@
   }
 
   body {
-    font-family: "Noto Sans CJK JP";
-    max-width: 900px;
+    font-family: "sans-serif";
+    font-size: 15px;
+    max-width: 960px;
     margin: auto;
     padding: 1rem;
   }
 
   .header {
-    display: flex;
-    font-size: 0.8rem;
+    font-size: 0.8em;
     margin-bottom: 1rem;
-  }
-
-  .info {
-    flex: 1;
-  }
-
-  .recents {
-    flex: 2;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
   }
 
   .info span {
@@ -87,12 +81,10 @@
   }
 
   .file {
-    /* display: flex; */
-    /* align-items: center; */
     border: 1px solid white;
     display: grid;
-    align-items: center;
     grid-template-columns: auto 1fr auto;
+    align-items: center;
   }
 
   .file.done {
@@ -128,17 +120,13 @@
   }
 
   .icon {
-    width: 4rem;
-    height: 2rem;
+    width: 2.5rem;
+    height: 1.5rem;
     border: 1px solid grey;
     border-radius: 2rem;
     background-size: cover;
     background-position: 50% 50%;
     background-repeat: no-repeat;
-  }
-
-  .name {
-    flex: 1;
   }
 
   .watched {
