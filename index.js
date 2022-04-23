@@ -106,7 +106,7 @@ function open(config, name) {
 }
 
 const nameEpisodeRegex =
-  /\[.*\] (.*) - (\d+\.*[\.v]*[\d]*) [\[\(].+[\)\]]+.*\.mkv/;
+  /\[.*\] (.*) - (\d+\.*[\.\d]*[\.v]*[\d]*) [\[\(].+[\)\]]+.*\.mkv/;
 
 function parseFilename(filename) {
   let matches = filename.match(nameEpisodeRegex);
