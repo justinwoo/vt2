@@ -21,7 +21,7 @@
       <h3><span>Recently watched:</span></h3>
       <div v-for="recent in recents">
         <div class="recent">
-          <span>{{ recent.name }}</span>
+          <span>{{ recent.path }}</span>
         </div>
       </div>
     </div>
@@ -36,11 +36,11 @@
       <div class="icon" v-bind:style="file.style"></div>
       <div
         class="name"
-        v-bind:data-title="file.title"
+        v-bind:data-title="file.path"
         v-bind:data-series="file.series"
         v-on:click="openFile(file)"
       >
-        {{ file.title }}
+        {{ file.path }}
       </div>
       <div class="watched" v-on:click="toggleWatched(file)">
         <span v-if="file.watched">watched: {{ file.watched }}</span>
@@ -136,62 +136,24 @@
 </style>
 
 <script>
-  const nameEpisodeRegex =
-    /\[.*\] (.*) - (\d+\.*[\.\d]*[\.v]*[\d]*) [\[\(].+[\)\]]+.*\.mkv/;
-
-  function parseEpisodeNumber(string) {
-    string = string.replace("v", ".");
-    return parseFloat(string);
-  }
-
-  function parseFilename(filename) {
-    let matches = filename.match(nameEpisodeRegex);
-    let series = matches && matches.length > 1 ? matches[1] : "n/a";
-    let episode =
-      matches && matches.length > 2 ? parseEpisodeNumber(matches[2]) : null;
-    return { series, episode };
-  }
-
-  function getFiles(filenames, watched) {
-    let latest = {};
-    let watchedMap = {};
-    watched.map((entry) => {
-      watchedMap[entry.name] = entry.date;
-      let { series, episode } = parseFilename(entry.name);
-      if (episode) {
-        if (latest[series] == null) {
-          latest[series] = episode;
-        } else if (latest[series] < episode) {
-          latest[series] = episode;
-        }
-      }
-    });
-
-    const withEpisode = filenames.map((filename, idx) => {
-      let { series, episode } = parseFilename(filename);
-
+  function getFiles(data) {
+    return data.map((r, idx) => {
       let origin = window.location.origin;
-      let encoded = encodeURIComponent(series);
+      let encoded = encodeURIComponent(r.series);
       let backgroundImage = `url("${origin}/dist/icons/${encoded}")`;
 
       return {
         idx,
-        title: filename,
-        watched: watchedMap[filename],
-        series,
-        episode,
+        path: r.path,
+        watched: r.watched,
+        series: r.series,
+        episode: r.episode,
+        latest: r.latest,
         style: {
           backgroundImage,
         },
       };
     });
-
-    const withLatest = withEpisode.map((r) => {
-      r.latest = latest[r.series];
-      return r;
-    });
-
-    return withLatest;
   }
 
   function groupBySeries(files) {
@@ -214,26 +176,24 @@
     return output;
   }
 
-  async function fetchFilenames() {
-    const res = await fetch("/files");
-    const json = await res.json();
-    return json;
-  }
-
-  async function fetchWatched() {
-    const res = await fetch("/watched");
+  async function fetchData() {
+    const res = await fetch("/data");
     const json = await res.json();
     return json;
   }
 
   async function sendOpenFile(file) {
-    return await fetch(`/open?name=${encodeURIComponent(file.title)}`);
+    return await fetch(`/open?name=${encodeURIComponent(file.path)}`);
   }
 
   async function sendToggleWatched(file) {
-    return await fetch(
-      `/update?name=${encodeURIComponent(file.title)}&watched=${!file.watched}`
-    );
+    let params = new URLSearchParams();
+    params.set("name", file.path);
+    params.set("setWatched", !file.watched);
+    params.set("series", file.series);
+    params.set("episode", file.episode);
+
+    return await fetch(`/update?${params.toString()}`);
   }
 
   async function sendGetIcons() {
@@ -246,9 +206,8 @@
       data: {
         loading: true,
         iconsLoading: false,
+        data: [],
         files: [],
-        filenames: [],
-        watched: [],
         recents: [],
         cursor: -1,
         groupBySeries: false,
@@ -260,18 +219,16 @@
       methods: {
         async fetchData() {
           this.loading = true;
-          const [filenames, watched] = await Promise.all([
-            fetchFilenames(),
-            fetchWatched(),
-          ]);
-          this.filenames = filenames;
-          this.watched = watched;
-          this.recents = watched.slice(0, 9);
+          const data = await fetchData();
+
+          this.data = data;
+          this.recents = data.filter((r) => !!r.watched).slice(0, 9);
+
           this.recalculate();
         },
         recalculate() {
           this.loading = false;
-          this.files = getFiles(this.filenames, this.watched);
+          this.files = getFiles(this.data);
           if (this.groupBySeries) {
             this.files = groupBySeries(this.files);
           }
@@ -299,7 +256,7 @@
           } else {
             let file = this.files[this.cursor];
             if (file) {
-              let e = document.querySelector(`div[data-title='${file.title}']`);
+              let e = document.querySelector(`div[data-title='${file.path}']`);
               if (e) {
                 e.scrollIntoViewIfNeeded();
               }
