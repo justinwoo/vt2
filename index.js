@@ -161,8 +161,9 @@ async function getData(db) {
           f.series,
           f.episode,
           (select max(e.episode) from entry e where e.series = f.series) as latest,
-          (select e.created from entry e where e.path = f.path) as watched
+          e.created as watched
         from files f
+        left join entry e on e.path = f.path
         order by ctime desc
       `
     )
