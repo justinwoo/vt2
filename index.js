@@ -160,10 +160,11 @@ async function getData(db) {
           f.path,
           f.series,
           f.episode,
-          (select max(e.episode) from entry e where e.series = f.series) as latest,
+          l.latest as latest,
           e.created as watched
         from files f
         left join entry e on e.path = f.path
+        left join latest l on l.series = f.series
         order by ctime desc
       `
     )
@@ -228,6 +229,7 @@ function getDB(config) {
     "drop table if exists files",
     "create table if not exists files (path text primary key unique, series text, episode float, ctime datetime)",
     "create table if not exists entry (path text primary key unique, series text, episode float, created datetime)",
+    "create view if not exists latest as select series, max(episode) as latest from entry group by series",
   ];
 
   console.log("-- running db setup");
