@@ -2,6 +2,7 @@ const http = require("http");
 const path = require("path");
 const fs = require("fs").promises;
 const cp = require("child_process");
+const hash = require("object-hash");
 
 const Database = require("better-sqlite3");
 
@@ -224,7 +225,8 @@ function getDB(config) {
   });
 
   const setup = [
-    "PRAGMA synchronous=OFF",
+    "pragma journal_mode = WAL",
+    "pragma synchronous = normal",
     "create table if not exists watched (path text primary key unique, created datetime)",
     "drop table if exists files",
     "create table if not exists files (path text primary key unique, series text, episode float, ctime datetime)",
@@ -238,26 +240,19 @@ function getDB(config) {
   return db;
 }
 
-let lastUpdateFilesTableRun = null;
-const UPDATE_FILES_INTERVAL = 10 * 1000; // ms
+let filesListingHash = null;
 
 async function updateFilesTable({ config, db }) {
-  let now = new Date().getTime();
-  if (
-    lastUpdateFilesTableRun != null &&
-    now - lastUpdateFilesTableRun < UPDATE_FILES_INTERVAL
-  ) {
-    console.log("-- skipping files table update");
-    return;
-  }
-
-  lastUpdateFilesTableRun = now;
-  console.log("-- updating files table");
-
   const files = await fs.readdir(config.dir);
   const validFiles = files.filter((x) => x.indexOf("mkv") !== -1);
+  const sha = hash(validFiles);
 
-  // await db.prepare("delete from files").run();
+  if (sha === filesListingHash) return;
+
+  filesListingHash = sha;
+
+  console.log("-- updating files table");
+  console.time("time");
 
   const filesData = await Promise.all(
     validFiles.map(async (filename) => {
@@ -277,6 +272,8 @@ async function updateFilesTable({ config, db }) {
     })
   );
 
+  db.prepare("delete from files").run();
+
   for (let params of filesData) {
     await db
       .prepare(
@@ -289,6 +286,8 @@ async function updateFilesTable({ config, db }) {
       )
       .run(params);
   }
+
+  console.timeEnd("time");
 }
 
 async function migrateWatchedToEntries(db) {
