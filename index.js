@@ -52,15 +52,8 @@ function getRequestListener({ config, db }) {
       }
 
       if (url.pathname === "/icons") {
-        const files = await getFiles(config);
-        const names = files.reduce((acc, file) => {
-          let { series } = parseFilename(file);
-          if (!!series && series !== "n/a") {
-            acc.push(series);
-          }
-          return acc;
-        }, []);
-        await getIcons(names);
+        const series = await getSeries(config);
+        await getIcons(series);
         return sendJSON(res, {});
       }
 
@@ -140,17 +133,8 @@ async function getIcons(names) {
   }
 }
 
-async function getFiles(config) {
-  const files = await fs.readdir(config.dir);
-  const validFiles = files.filter((x) => x.indexOf("mkv") !== -1);
-  let stats = await Promise.all(
-    validFiles.map(async (filename) => {
-      const stat = await fs.stat(path.join(config.dir, filename));
-      return { filename, stat };
-    })
-  );
-  stats.sort((x, y) => y.stat.ctimeMs - x.stat.ctimeMs);
-  return stats.map((x) => x.filename);
+async function getSeries(config) {
+  return await db.prepare("select distinct(series) from files").all();
 }
 
 async function getData(db) {
