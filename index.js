@@ -52,7 +52,7 @@ function getRequestListener({ config, db }) {
       }
 
       if (url.pathname === "/icons") {
-        const series = await getSeries(config);
+        const series = await getSeries({ config, db });
         await getIcons(series);
         return sendJSON(res, {});
       }
@@ -116,8 +116,9 @@ function parseFilename(filename) {
   return { series, episode };
 }
 
-async function getIcons(names) {
-  for await (let name of names) {
+async function getIcons(series) {
+  for await (let r of series) {
+    const name = r.series;
     const iconPath = path.join("./dist/icons", name);
     let exists = await fs.stat(iconPath).catch((_) => false);
     if (!exists) {
@@ -133,7 +134,7 @@ async function getIcons(names) {
   }
 }
 
-async function getSeries(config) {
+async function getSeries({ config, db }) {
   return await db.prepare("select distinct(series) from files").all();
 }
 
