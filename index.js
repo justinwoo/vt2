@@ -210,7 +210,7 @@ function getDB(config) {
   });
 
   const setup = [
-    "pragma journal_mode = WAL",
+    "pragma journal_mode = delete",
     "pragma synchronous = normal",
     "create table if not exists watched (path text primary key unique, created datetime)",
     "drop table if exists files",
