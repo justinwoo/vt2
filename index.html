@@ -221,6 +221,18 @@
     return await fetch("/icons");
   }
 
+  function debounce(fn) {
+    let window = 20;
+    let last = 0;
+    return function (arg) {
+      let now = new Date().getTime();
+      if (now - last > window) {
+        last = now;
+        fn(arg);
+      }
+    };
+  }
+
   function startApp() {
     var app = new Vue({
       el: "#app",
@@ -316,43 +328,46 @@
           }
         },
         handleKeyboardEvents() {
-          window.addEventListener("keydown", (e) => {
-            if (e.target !== document.body) {
-              return;
-            }
-            if (e.key === "k") {
-              this.updateCursor((x) => x - 1);
-            }
-            if (e.key === "j") {
-              this.updateCursor((x) => x + 1);
-            }
-            if (e.key === "o") {
-              let file = this.files[this.cursor];
-              if (file) {
-                this.openFile(file);
+          window.addEventListener(
+            "keydown",
+            debounce((e) => {
+              if (e.target !== document.body) {
+                return;
               }
-            }
-            if (e.key === "M" || e.key === "W") {
-              let file = this.files[this.cursor];
-              if (file) {
-                this.toggleWatched(file);
+              if (e.key === "k") {
+                this.updateCursor((x) => x - 1);
               }
-            }
-            if (e.key === "r") {
-              this.fetchData();
-            }
-            if (e.key === "I") {
-              this.sendGetIcons();
-            }
-            if (e.key === "g") {
-              this.groupBySeries = !this.groupBySeries;
-              this.recalculate();
-            }
-            if (e.key === "/") {
-              e.preventDefault();
-              this.focusSearchInput();
-            }
-          });
+              if (e.key === "j") {
+                this.updateCursor((x) => x + 1);
+              }
+              if (e.key === "o") {
+                let file = this.files[this.cursor];
+                if (file) {
+                  this.openFile(file);
+                }
+              }
+              if (e.key === "M" || e.key === "W") {
+                let file = this.files[this.cursor];
+                if (file) {
+                  this.toggleWatched(file);
+                }
+              }
+              if (e.key === "r") {
+                this.fetchData();
+              }
+              if (e.key === "I") {
+                this.sendGetIcons();
+              }
+              if (e.key === "g") {
+                this.groupBySeries = !this.groupBySeries;
+                this.recalculate();
+              }
+              if (e.key === "/") {
+                e.preventDefault();
+                this.focusSearchInput();
+              }
+            })
+          );
         },
       },
     });
