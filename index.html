@@ -16,6 +16,13 @@
       <span>icons loading: {{ iconsLoading }}</span>
       <span v-if="!groupBySeries">g: group by series</span>
       <span v-else>g: turn off group by series</span>
+      <input
+        class="search-input"
+        placeholder="/: toggle search focus"
+        v-bind:value="filterString"
+        v-on:keydown="onSearchKeydown"
+        v-on:input="onSearchInput"
+      />
     </div>
     <div class="recents">
       <h3><span>Recently watched:</span></h3>
@@ -176,6 +183,20 @@
     return output;
   }
 
+  function filterByString(files, filterString) {
+    let filter = filterString.toLowerCase();
+    let idx = 0;
+    let output = [];
+    for (let file of files) {
+      let series = file.series.toLowerCase();
+      if (series.indexOf(filter) !== -1) {
+        file.idx = idx++;
+        output.push(file);
+      }
+    }
+    return output;
+  }
+
   async function fetchData() {
     const res = await fetch("/data");
     const json = await res.json();
@@ -211,6 +232,7 @@
         recents: [],
         cursor: -1,
         groupBySeries: false,
+        filterString: "",
       },
       created() {
         this.fetchData();
@@ -232,10 +254,28 @@
           if (this.groupBySeries) {
             this.files = groupBySeries(this.files);
           }
+          if (this.filterString !== "") {
+            this.files = filterByString(this.files, this.filterString);
+          }
         },
         async openFile(file) {
           this.cursor = file.idx;
           sendOpenFile(file);
+        },
+        onSearchKeydown(e) {
+          if (e.key === "Escape") {
+            this.unfocusSearchInput();
+          }
+        },
+        onSearchInput(e) {
+          if (e.data === "/") {
+            e.target.value = this.filterString;
+            e.preventDefault();
+            this.unfocusSearchInput();
+            return;
+          }
+          this.filterString = e.target.value;
+          this.recalculate();
         },
         async toggleWatched(file) {
           this.cursor = file.idx;
@@ -263,8 +303,23 @@
             }
           }
         },
+        focusSearchInput() {
+          let e = document.querySelector(".search-input");
+          if (e) {
+            e.focus();
+          }
+        },
+        unfocusSearchInput() {
+          let e = document.querySelector(".search-input");
+          if (e) {
+            e.blur();
+          }
+        },
         handleKeyboardEvents() {
           window.addEventListener("keydown", (e) => {
+            if (e.target !== document.body) {
+              return;
+            }
             if (e.key === "k") {
               this.updateCursor((x) => x - 1);
             }
@@ -292,6 +347,10 @@
             if (e.key === "g") {
               this.groupBySeries = !this.groupBySeries;
               this.recalculate();
+            }
+            if (e.key === "/") {
+              e.preventDefault();
+              this.focusSearchInput();
             }
           });
         },
