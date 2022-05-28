@@ -43,7 +43,7 @@
       <div class="icon" v-bind:style="file.style"></div>
       <div
         class="name"
-        v-bind:data-title="file.path"
+        v-bind:data-title="file.idx"
         v-bind:data-series="file.series"
         v-on:click="openFile(file)"
       >
@@ -296,7 +296,7 @@
           } else {
             let file = this.files[this.cursor];
             if (file) {
-              let e = document.querySelector(`div[data-title='${file.path}']`);
+              let e = document.querySelector(`div[data-title='${file.idx}']`);
               if (e) {
                 e.scrollIntoViewIfNeeded();
               }
