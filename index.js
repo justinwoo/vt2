@@ -44,6 +44,13 @@ function getRequestListener({ config, db }) {
         return sendContent(res, "", file);
       }
 
+      if (url.pathname.indexOf("/src") === 0) {
+        const file = await fs.readFile(
+          __dirname + decodeURIComponent(url.pathname)
+        );
+        return sendContent(res, "application/javascript", file);
+      }
+
       // ----- api -----
       if (url.pathname === "/data") {
         await updateFilesTable({ config, db });
