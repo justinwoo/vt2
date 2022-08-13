@@ -34,8 +34,10 @@
     </div>
   </div>
 
-  <div v-for="file in files">
+  <div class="files">
     <div
+      class="file"
+      v-for="file in files"
       class="file"
       v-bind:class="{ 'done': file.watched, 'cursor': cursor === file.idx }"
       v-bind:title="'latest watched: ' + file.latest"
@@ -90,6 +92,7 @@
   .file {
     border: 1px solid white;
     display: grid;
+    grid-gap: 0.5rem;
     grid-template-columns: auto 1fr auto;
     align-items: center;
   }
@@ -127,7 +130,6 @@
   }
 
   .icon {
-    margin: 0.5rem;
     width: 2rem;
     height: 2rem;
     border: 1px solid grey;
