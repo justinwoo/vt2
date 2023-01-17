@@ -310,6 +310,9 @@
             this.cursor = -1;
             window.scroll(0, 0);
           } else {
+            if (this.cursor > this.files.length) {
+              this.cursor = this.files.length -1;
+            }
             let file = this.files[this.cursor];
             if (file) {
               let e = document.querySelector(`div[data-title='${file.idx}']`);
@@ -338,11 +341,17 @@
               if (e.target !== document.body) {
                 return;
               }
+              if (e.key === "K") {
+                this.updateCursor((x) => x - 10);
+              }
               if (e.key === "k") {
                 this.updateCursor((x) => x - 1);
               }
               if (e.key === "j") {
                 this.updateCursor((x) => x + 1);
+              }
+              if (e.key === "J") {
+                this.updateCursor((x) => x + 10);
               }
               if (e.key === "o") {
                 let file = this.files[this.cursor];
