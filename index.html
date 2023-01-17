@@ -290,6 +290,7 @@
             return;
           }
           this.filterString = e.target.value;
+          this.cursor = 0
           this.recalculate();
         },
         async toggleWatched(file) {
@@ -363,6 +364,7 @@
               }
               if (e.key === "g") {
                 this.groupBySeries = !this.groupBySeries;
+                this.cursor = 0
                 this.recalculate();
               }
               if (e.key === "/") {
