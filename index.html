@@ -14,8 +14,9 @@
       <span>I: fetch icons and reload page</span>
       <span x-text="`files loading: ${loading}`"></span>
       <span x-text="`icons loading: ${iconsLoading}`"></span>
-      <span v-if="!groupBySeries">g: group by series</span>
-      <span v-else>g: turn off group by series</span>
+      <span
+        x-text="!groupBySeries ? 'g: group by series' : 'g: turn off group by series'"
+      ></span>
       <input
         class="search-input"
         placeholder="/: toggle search focus"
@@ -51,7 +52,9 @@
         ></a>
         <div class="watched" @click="toggleWatched(file)">
           <template x-if="file.watched">
-            <span x-text="`watched: ${file.watched.toString().slice(0,10)}`"></span>
+            <span
+              x-text="`watched: ${file.watched.toString().slice(0,10)}`"
+            ></span>
           </template>
           <template x-if="!file.watched && file.latest != null">
             <span x-text="`last: ${file.latest}`"></span>
@@ -76,6 +79,7 @@
   }
 
   .header {
+    line-height: 1.5;
     font-size: 0.8em;
     margin-bottom: 1rem;
     display: grid;
