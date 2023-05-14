@@ -51,7 +51,7 @@
         ></a>
         <div class="watched" @click="toggleWatched(file)">
           <template x-if="file.watched">
-            <span x-text="`watched: ${file.watched}`"></span>
+            <span x-text="`watched: ${file.watched.toString().slice(0,10)}`"></span>
           </template>
           <template x-if="!file.watched && file.latest != null">
             <span x-text="`last: ${file.latest}`"></span>
@@ -96,6 +96,7 @@
     grid-gap: 0.5rem;
     grid-template-columns: auto 1fr auto;
     align-items: center;
+    padding: 0.25rem 0;
   }
 
   .file.done {
@@ -141,7 +142,7 @@
   }
 
   .watched {
-    width: 20rem;
+    width: 14rem;
     text-align: right;
   }
 </style>
