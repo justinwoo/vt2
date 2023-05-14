@@ -1,7 +1,7 @@
-<script src="./dist/vue.js"></script>
+<script src="./dist/alpine.js" defer></script>
 <title>vidtracker</title>
 
-<div id="app">
+<div x-data="app">
   <h1>vidtracker</h1>
   <div class="header">
     <div class="info">
@@ -12,52 +12,53 @@
       <span>W/M: mark as watched</span>
       <span>r: refresh</span>
       <span>I: fetch icons and reload page</span>
-      <span>files loading: {{ loading }}</span>
-      <span>icons loading: {{ iconsLoading }}</span>
+      <span x-text="`files loading: ${loading}`"></span>
+      <span x-text="`icons loading: ${iconsLoading}`"></span>
       <span v-if="!groupBySeries">g: group by series</span>
       <span v-else>g: turn off group by series</span>
       <input
         class="search-input"
         placeholder="/: toggle search focus"
-        v-bind:value="filterString"
-        v-on:keydown="onSearchKeydown"
-        v-on:input="onSearchInput"
+        :value="filterString"
+        @keydown="onSearchKeydown"
+        @input="onSearchInput"
       />
     </div>
     <div class="recents">
       <h3><span>Recently watched:</span></h3>
-      <div v-for="recent in recents">
+      <template x-for="recent in recents">
         <div class="recent">
-          <span>{{ recent.path }}</span>
+          <span x-text="recent.path"></span>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 
   <div class="files">
-    <div
-      class="file"
-      v-for="file in files"
-      class="file"
-      v-bind:class="{ 'done': file.watched, 'cursor': cursor === file.idx }"
-      v-bind:title="'latest watched: ' + file.latest"
-    >
-      <div class="icon" v-bind:style="file.style"></div>
+    <template x-for="file in files">
       <div
-        class="name"
-        v-bind:data-title="file.idx"
-        v-bind:data-series="file.series"
-        v-on:click="openFile(file)"
+        class="file"
+        :class="{ done: file.watched, cursor: cursor === file.idx }"
+        :title="'latest watched: ' + file.latest"
       >
-        {{ file.path }}
+        <div class="icon" :style="file.style"></div>
+        <a
+          class="name"
+          :data-title="file.idx"
+          :data-series="file.series"
+          @click="openFile(file)"
+          x-text="file.path"
+        ></a>
+        <div class="watched" @click="toggleWatched(file)">
+          <template x-if="file.watched">
+            <span x-text="`watched: ${file.watched}`"></span>
+          </template>
+          <template x-if="!file.watched && file.latest != null">
+            <span x-text="`last: ${file.latest}`"></span>
+          </template>
+        </div>
       </div>
-      <div class="watched" v-on:click="toggleWatched(file)">
-        <span v-if="file.watched">watched: {{ file.watched }}</span>
-        <span v-else>
-          <span v-if="file.latest != null">last: {{ file.latest }}</span>
-        </span>
-      </div>
-    </div>
+    </template>
   </div>
 </div>
 
@@ -236,160 +237,161 @@
     };
   }
 
-  function startApp() {
-    var app = new Vue({
-      el: "#app",
-      data: {
-        loading: true,
-        iconsLoading: false,
-        data: [],
-        files: [],
-        recents: [],
-        cursor: -1,
-        groupBySeries: false,
-        filterString: "",
-      },
-      created() {
+  document.addEventListener("alpine:init", () => {
+    Alpine.data("app", () => ({
+      loading: true,
+      iconsLoading: false,
+      data: [],
+      files: [],
+      recents: [],
+      cursor: -1,
+      groupBySeries: false,
+      filterString: "",
+
+      init() {
         this.fetchData();
         this.handleKeyboardEvents();
       },
-      methods: {
-        async fetchData() {
-          this.loading = true;
-          const data = await fetchData();
 
-          this.data = data;
-          this.recents = data.filter((r) => !!r.watched).slice(0, 9);
+      async fetchData() {
+        this.loading = true;
+        const data = await fetchData();
 
-          this.recalculate();
-        },
-        recalculate() {
-          this.loading = false;
-          this.files = getFiles(this.data);
-          if (this.groupBySeries) {
-            this.files = groupBySeries(this.files);
-          }
-          if (this.filterString !== "") {
-            this.files = filterByString(this.files, this.filterString);
-          }
-        },
-        async openFile(file) {
-          this.cursor = file.idx;
-          sendOpenFile(file);
-        },
-        onSearchKeydown(e) {
-          if (e.key === "Escape") {
-            this.unfocusSearchInput();
-          }
-        },
-        onSearchInput(e) {
-          if (e.data === "/") {
-            e.target.value = this.filterString;
-            e.preventDefault();
-            this.unfocusSearchInput();
-            return;
-          }
-          this.filterString = e.target.value;
-          this.cursor = 0
-          this.recalculate();
-        },
-        async toggleWatched(file) {
-          this.cursor = file.idx;
-          sendToggleWatched(file);
-          this.fetchData();
-        },
-        async sendGetIcons() {
-          this.iconsLoading = true;
-          await sendGetIcons();
-          this.iconsLoading = false;
-          window.location = "/";
-        },
-        updateCursor(fn) {
-          this.cursor = fn(this.cursor);
-          if (this.cursor < -1) {
-            this.cursor = -1;
-            window.scroll(0, 0);
-          } else {
-            if (this.cursor > this.files.length) {
-              this.cursor = this.files.length -1;
-            }
-            let file = this.files[this.cursor];
-            if (file) {
-              let e = document.querySelector(`div[data-title='${file.idx}']`);
-              if (e) {
-                e.scrollIntoViewIfNeeded();
-              }
-            }
-          }
-        },
-        focusSearchInput() {
-          let e = document.querySelector(".search-input");
-          if (e) {
-            e.focus();
-          }
-        },
-        unfocusSearchInput() {
-          let e = document.querySelector(".search-input");
-          if (e) {
-            e.blur();
-          }
-        },
-        handleKeyboardEvents() {
-          window.addEventListener(
-            "keydown",
-            debounce((e) => {
-              if (e.target !== document.body) {
-                return;
-              }
-              if (e.key === "K") {
-                this.updateCursor((x) => x - 10);
-              }
-              if (e.key === "k") {
-                this.updateCursor((x) => x - 1);
-              }
-              if (e.key === "j") {
-                this.updateCursor((x) => x + 1);
-              }
-              if (e.key === "J") {
-                this.updateCursor((x) => x + 10);
-              }
-              if (e.key === "o") {
-                let file = this.files[this.cursor];
-                if (file) {
-                  this.openFile(file);
-                }
-              }
-              if (e.key === "M" || e.key === "W") {
-                let file = this.files[this.cursor];
-                if (file) {
-                  this.toggleWatched(file);
-                }
-              }
-              if (e.key === "r") {
-                this.fetchData();
-              }
-              if (e.key === "I") {
-                this.sendGetIcons();
-              }
-              if (e.key === "g") {
-                this.groupBySeries = !this.groupBySeries;
-                this.cursor = 0
-                this.recalculate();
-              }
-              if (e.key === "/") {
-                e.preventDefault();
-                this.focusSearchInput();
-              }
-            })
-          );
-        },
+        this.data = data;
+        this.recents = data.filter((r) => !!r.watched).slice(0, 9);
+
+        this.recalculate();
       },
-    });
 
-    console.log("app running:", app);
+      recalculate() {
+        this.loading = false;
+        this.files = getFiles(this.data);
+        if (this.groupBySeries) {
+          this.files = groupBySeries(this.files);
+        }
+        if (this.filterString !== "") {
+          this.files = filterByString(this.files, this.filterString);
+        }
+      },
 
-    window.app = app;
-  }
+      async openFile(file) {
+        this.cursor = file.idx;
+        sendOpenFile(file);
+      },
 
-  startApp();
+      onSearchKeydown(e) {
+        if (e.key === "Escape") {
+          this.unfocusSearchInput();
+        }
+      },
+
+      onSearchInput(e) {
+        if (e.data === "/") {
+          e.target.value = this.filterString;
+          e.preventDefault();
+          this.unfocusSearchInput();
+          return;
+        }
+        this.filterString = e.target.value;
+        this.cursor = 0;
+        this.recalculate();
+      },
+
+      async toggleWatched(file) {
+        this.cursor = file.idx;
+        sendToggleWatched(file);
+        this.fetchData();
+      },
+
+      async sendGetIcons() {
+        this.iconsLoading = true;
+        await sendGetIcons();
+        this.iconsLoading = false;
+        window.location = "/";
+      },
+
+      updateCursor(fn) {
+        this.cursor = fn(this.cursor);
+        if (this.cursor < -1) {
+          this.cursor = -1;
+          window.scroll(0, 0);
+        } else {
+          if (this.cursor > this.files.length) {
+            this.cursor = this.files.length - 1;
+          }
+          let file = this.files[this.cursor];
+          if (file) {
+            let e = document.querySelector(`div[data-title='${file.idx}']`);
+            if (e) {
+              e.scrollIntoViewIfNeeded();
+            }
+          }
+        }
+      },
+
+      focusSearchInput() {
+        let e = document.querySelector(".search-input");
+        if (e) {
+          e.focus();
+        }
+      },
+
+      unfocusSearchInput() {
+        let e = document.querySelector(".search-input");
+        if (e) {
+          e.blur();
+        }
+      },
+
+      handleKeyboardEvents() {
+        window.addEventListener(
+          "keydown",
+          debounce((e) => {
+            if (e.target !== document.body) {
+              return;
+            }
+            if (e.key === "K") {
+              this.updateCursor((x) => x - 10);
+            }
+            if (e.key === "k") {
+              this.updateCursor((x) => x - 1);
+            }
+            if (e.key === "j") {
+              this.updateCursor((x) => x + 1);
+            }
+            if (e.key === "J") {
+              this.updateCursor((x) => x + 10);
+            }
+            if (e.key === "o") {
+              let file = this.files[this.cursor];
+              if (file) {
+                this.openFile(file);
+              }
+            }
+            if (e.key === "M" || e.key === "W") {
+              let file = this.files[this.cursor];
+              if (file) {
+                this.toggleWatched(file);
+              }
+            }
+            if (e.key === "r") {
+              this.fetchData();
+            }
+            if (e.key === "I") {
+              this.sendGetIcons();
+            }
+            if (e.key === "g") {
+              this.groupBySeries = !this.groupBySeries;
+              this.cursor = 0;
+              this.recalculate();
+            }
+            if (e.key === "/") {
+              e.preventDefault();
+              this.focusSearchInput();
+            }
+          })
+        );
+      },
+    }));
+  });
 </script>
