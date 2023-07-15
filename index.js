@@ -97,13 +97,13 @@ function getRequestListener({ config, db }) {
 }
 
 function open(config, name) {
-  const command = `(${config.exe} '${path.join(config.dir, name)}' &)`;
-
-  console.log("launching with bash:", command);
-  const spawned = cp.spawn("bash", ["-c", command]);
-  console.log("status:", spawned.status);
-  console.log("stdout:", spawned.stdout.toString());
-  console.error("stderr:", spawned.stderr.toString());
+  // const command = `(${config.exe} '${path.join(config.dir, name)}' &)`;
+  // console.log("launching with bash:", command);
+  // cp.spawn("bash", ["-c", command], {
+  cp.spawn(config.exe, [path.join(config.dir, name)], {
+    detached: true,
+    stdio: "ignore",
+  });
 }
 
 const nameEpisodeRegex =
