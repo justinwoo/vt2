@@ -39,7 +39,7 @@ function getRequestListener({ config, db }) {
 
       if (url.pathname.indexOf("/dist") === 0) {
         const file = await fs.readFile(
-          __dirname + decodeURIComponent(url.pathname)
+          __dirname + decodeURIComponent(url.pathname),
         );
         return sendContent(res, "", file);
       }
@@ -70,7 +70,7 @@ function getRequestListener({ config, db }) {
         const series = decodeURIComponent(url.searchParams.get("series"));
         console.log(`update: ${url.searchParams.toString()}`);
         const episode = Number(
-          decodeURIComponent(url.searchParams.get("episode"))
+          decodeURIComponent(url.searchParams.get("episode")),
         );
         if (setWatched === "true") {
           upsertEntry(db, filename, series, episode);
@@ -97,7 +97,13 @@ function getRequestListener({ config, db }) {
 }
 
 function open(config, name) {
-  cp.spawn(config.exe, [path.join(config.dir, name)]);
+  const command = `${config.exe} '${path.join(config.dir, name)}'`;
+
+  console.log("launching with bash:", command);
+  const spawned = cp.spawnSync("bash", ["-c", command]);
+  console.log("status:", spawned.status);
+  console.log("stdout:", spawned.stdout.toString());
+  console.error("stderr:", spawned.stderr.toString());
 }
 
 const nameEpisodeRegex =
@@ -134,7 +140,7 @@ async function getIcons(series) {
   }
 }
 
-async function getSeries({ config, db }) {
+async function getSeries({ db }) {
   return await db.prepare("select distinct(series) from files").all();
 }
 
@@ -152,7 +158,7 @@ async function getData(db) {
         left join entry e on e.path = f.path
         left join latest l on l.series = f.series
         order by ctime desc
-      `
+      `,
     )
     .all();
 }
@@ -171,7 +177,7 @@ async function upsertEntry(db, filename, series, episode) {
           ( path, series, episode, created )
         values
           ( $path, $series, $episode, datetime() )
-      `
+      `,
     )
     .run({
       path: filename,
@@ -196,7 +202,6 @@ async function main() {
   const db = getDB(config);
 
   await updateFilesTable({ config, db });
-  // await migrateWatchedToEntries(db);
 
   const server = http.createServer(getRequestListener({ config, db }));
   server.listen(port, host, () => {
@@ -254,7 +259,7 @@ async function updateFilesTable({ config, db }) {
         episode: episode,
         ctime: stat.ctime.getTime(),
       };
-    })
+    }),
   );
 
   db.prepare("delete from files").run();
@@ -267,52 +272,12 @@ async function updateFilesTable({ config, db }) {
           ( path, series, episode, ctime )
         values
           ( $path, $series, $episode, $ctime )
-        `
+        `,
       )
       .run(params);
   }
 
   console.timeEnd("time");
-}
-
-async function migrateWatchedToEntries(db) {
-  console.log("-- migrating watched entries");
-
-  const watched = await db
-    .prepare("select path, created from watched order by created desc")
-    .all();
-
-  let entryData = [];
-
-  watched.forEach((r) => {
-    let { series, episode } = parseFilename(r.path);
-
-    if (!series || episode == null || series === "n/a") {
-      console.error(
-        `warning: could not parse while migrating watched entries: ${r.path}. ${series}, ${episode})`
-      );
-    } else {
-      entryData.push({
-        path: r.path,
-        series,
-        episode,
-        created: r.created,
-      });
-    }
-  });
-
-  for (let params of entryData) {
-    await db
-      .prepare(
-        `
-        insert or replace into entry
-          ( path, series, episode, created )
-        values
-          ( $path, $series, $episode, $created )
-        `
-      )
-      .run(params);
-  }
 }
 
 main();
