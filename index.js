@@ -97,10 +97,10 @@ function getRequestListener({ config, db }) {
 }
 
 function open(config, name) {
-  // const command = `(${config.exe} '${path.join(config.dir, name)}' &)`;
-  // console.log("launching with bash:", command);
-  // cp.spawn("bash", ["-c", command], {
-  cp.spawn(config.exe, [path.join(config.dir, name)], {
+  const filepath = path.join(config.dir, name);
+  const command = `${config.exe} "${filepath}"`;
+  console.log(`exec: ${command}`)
+  cp.exec(command, {
     detached: true,
     stdio: "ignore",
   });
