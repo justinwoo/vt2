@@ -99,7 +99,7 @@ function getRequestListener({ config, db }) {
 function open(config, name) {
   const filepath = path.join(config.dir, name);
   const command = `${config.exe} "${filepath}"`;
-  console.log(`exec: ${command}`)
+  console.log(`exec: ${command}`);
   cp.exec(command, {
     detached: true,
     stdio: "ignore",
@@ -234,7 +234,9 @@ let filesListingHash = null;
 
 async function updateFilesTable({ config, db }) {
   const files = await fs.readdir(config.dir);
-  const validFiles = files.filter((x) => x.indexOf("mkv") !== -1);
+  const validFiles = files.filter(
+    (x) => x.indexOf("._") !== 0 && x.indexOf("mkv") !== -1,
+  );
   const sha = hash(validFiles);
 
   if (sha === filesListingHash) return;
