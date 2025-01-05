@@ -116,7 +116,7 @@ function parseEpisodeNumber(string) {
 
 function parseFilename(filename) {
   let matches = filename.match(nameEpisodeRegex);
-  let series = matches && matches.length > 1 ? matches[1] : "n/a";
+  let series = matches && matches.length > 1 ? matches[1] : "INVALID";
   let episode =
     matches && matches.length > 2 ? parseEpisodeNumber(matches[2]) : null;
   return { series, episode };
@@ -128,6 +128,9 @@ async function getIcons(series) {
     const iconPath = path.join("./dist/icons", name);
     let exists = await fs.stat(iconPath).catch((_) => false);
     if (!exists) {
+      if (name === "INVALID") {
+        continue;
+      }
       console.log(`Fetching icon for ${name}`);
       await new Promise((res) => {
         let process = cp.spawn("get-icons", [name, iconPath]);
@@ -251,7 +254,7 @@ async function updateFilesTable({ config, db }) {
       const stat = await fs.stat(path.join(config.dir, filename));
       let { series, episode } = parseFilename(filename);
 
-      if (!series || episode == null || series === "n/a") {
+      if (!series || episode == null || series === "INVALID") {
         console.error(`Could not parse: ${filename}. ${series}, ${episode})`);
       }
 
