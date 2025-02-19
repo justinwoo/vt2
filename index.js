@@ -39,7 +39,7 @@ function getRequestListener({ config, db }) {
 
       if (url.pathname.indexOf("/dist") === 0) {
         const file = await fs.readFile(
-          __dirname + decodeURIComponent(url.pathname),
+          __dirname + decodeURIComponent(url.pathname)
         );
         return sendContent(res, "", file);
       }
@@ -70,7 +70,7 @@ function getRequestListener({ config, db }) {
         const series = decodeURIComponent(url.searchParams.get("series"));
         console.log(`update: ${url.searchParams.toString()}`);
         const episode = Number(
-          decodeURIComponent(url.searchParams.get("episode")),
+          decodeURIComponent(url.searchParams.get("episode"))
         );
         if (setWatched === "true") {
           upsertEntry(db, filename, series, episode);
@@ -123,24 +123,30 @@ function parseFilename(filename) {
 }
 
 async function getIcons(series) {
-  for await (let r of series) {
-    const name = r.series;
-    const iconPath = path.join("./dist/icons", name);
-    let exists = await fs.stat(iconPath).catch((_) => false);
-    if (!exists) {
-      if (name === "INVALID") {
-        continue;
+  const iconDir = "./dist/icons";
+  const names = series
+    .map((r) => r.series)
+    .filter((name) => name !== "INVALID");
+
+  if (names.length === 0) return;
+
+  console.log(`Fetching ${names.length} icon(s) for ${names.join(", ")}`);
+
+  await new Promise((res, rej) => {
+    let process = cp.spawn("get-icons", [iconDir, ...names]);
+    let errMsg = "";
+    process.on("error", (err) => (errMsg += err.message));
+    process.stderr.on("data", (data) => (errMsg += data.toString()));
+    process.on("exit", (code) => {
+      console.log(`Fetched icons, exit code:`, code);
+      if (errMsg) {
+        console.error("error:", errMsg);
+        rej(new Error(errMsg));
+      } else {
+        res();
       }
-      console.log(`Fetching icon for ${name}`);
-      await new Promise((res) => {
-        let process = cp.spawn("get-icons", [name, iconPath]);
-        process.on("exit", (code) => {
-          console.log(`Fetched icon for ${name}`, code);
-          res();
-        });
-      });
-    }
-  }
+    });
+  });
 }
 
 async function getSeries({ db }) {
@@ -161,7 +167,7 @@ async function getData(db) {
         left join entry e on e.path = f.path
         left join latest l on l.series = f.series
         order by ctime desc
-      `,
+      `
     )
     .all();
 }
@@ -180,7 +186,7 @@ async function upsertEntry(db, filename, series, episode) {
           ( path, series, episode, created )
         values
           ( $path, $series, $episode, datetime() )
-      `,
+      `
     )
     .run({
       path: filename,
@@ -238,7 +244,7 @@ let filesListingHash = null;
 async function updateFilesTable({ config, db }) {
   const files = await fs.readdir(config.dir);
   const validFiles = files.filter(
-    (x) => x.indexOf("._") !== 0 && x.indexOf("mkv") !== -1,
+    (x) => x.indexOf("._") !== 0 && x.indexOf("mkv") !== -1
   );
   const sha = hash(validFiles);
 
@@ -264,7 +270,7 @@ async function updateFilesTable({ config, db }) {
         episode: episode,
         ctime: stat.ctime.getTime(),
       };
-    }),
+    })
   );
 
   db.prepare("delete from files").run();
@@ -277,7 +283,7 @@ async function updateFilesTable({ config, db }) {
           ( path, series, episode, ctime )
         values
           ( $path, $series, $episode, $ctime )
-        `,
+        `
       )
       .run(params);
   }
