@@ -1,7 +1,6 @@
-<script src="./dist/alpine.js" defer></script>
 <title>vidtracker</title>
 
-<div x-data="app">
+<vt-app id="vt-app">
   <h1>vidtracker</h1>
   <div class="header">
     <div class="info">
@@ -12,58 +11,23 @@
       <span>W/M: mark as watched</span>
       <span>r: refresh</span>
       <span>I: fetch icons and reload page</span>
-      <span x-text="`files loading: ${loading}`"></span>
-      <span x-text="`icons loading: ${iconsLoading}`"></span>
-      <span
-        x-text="!groupBySeries ? 'g: group by series' : 'g: turn off group by series'"
-      ></span>
+      <span id="files-loading">files loading:</span>
+      <span id="icons-loading">icons loading:</span>
       <input
+        id="search-input"
         class="search-input"
         placeholder="/: toggle search focus"
-        :value="filterString"
-        @keydown="onSearchKeydown"
-        @input="onSearchInput"
       />
     </div>
-    <div class="recents">
-      <h3><span>Recently watched:</span></h3>
-      <template x-for="recent in recents">
-        <div class="recent">
-          <span x-text="recent.path"></span>
-        </div>
-      </template>
+
+    <div id="recents" class="recents">
+      <h3>Recently watched:</h3>
+      <div id="recently-watched"></div>
     </div>
   </div>
 
-  <div class="files">
-    <template x-for="file in files">
-      <div
-        class="file"
-        :class="{ done: file.watched, cursor: cursor === file.idx }"
-        :title="'latest watched: ' + file.latest"
-      >
-        <div class="icon" :style="file.style"></div>
-        <a
-          class="name"
-          :data-title="file.idx"
-          :data-series="file.series"
-          @click="openFile(file)"
-          x-text="file.path"
-        ></a>
-        <div class="watched" @click="toggleWatched(file)">
-          <template x-if="file.watched">
-            <span
-              x-text="`watched: ${file.watched.toString().slice(0,10)}`"
-            ></span>
-          </template>
-          <template x-if="!file.watched && file.latest != null">
-            <span x-text="`last: ${file.latest}`"></span>
-          </template>
-        </div>
-      </div>
-    </template>
-  </div>
-</div>
+  <div id="files" class="files"></div>
+</vt-app>
 
 <style>
   * {
@@ -94,6 +58,7 @@
     text-align: right;
   }
 
+  vt-file,
   .file {
     border: 1px solid white;
     display: grid;
@@ -103,45 +68,46 @@
     padding: 0.25rem;
   }
 
-  .file.done {
+  vt-file.done {
     background: rgba(0, 255, 0, 0.05);
   }
 
-  .file.cursor {
+  vt-file.cursor {
     border: 1px solid black;
     background: rgba(255, 0, 0, 0.2);
   }
 
-  .file.done.cursor {
+  vt-file.done.cursor {
     background: rgba(255, 100, 0, 0.2);
   }
 
-  .name {
+  vt-link {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .name,
-  .watched {
+  vt-link,
+  vt-watched {
     padding: 0.5rem;
     cursor: pointer;
   }
 
-  .name:hover,
-  .watched:hover {
+  vt-link:hover,
+  vt-watched:hover {
     text-decoration: underline;
+    text-underline-offset: 0.3rem;
   }
 
-  .file .watched:hover:before {
+  vt-file vt-watched:hover:before {
     content: "mark watched - ";
   }
 
-  .file.done .watched:hover:before {
+  vt-file.done vt-watched:hover:before {
     content: "";
   }
 
-  .icon {
+  vt-icon {
     width: 2rem;
     height: 2rem;
     border: 1px solid grey;
@@ -151,258 +117,359 @@
     background-repeat: no-repeat;
   }
 
+  vt-watched,
   .watched {
     width: 14rem;
     text-align: right;
   }
+
+  .more-files {
+    padding: 0.5rem;
+    color: grey;
+    text-align: center;
+  }
 </style>
 
 <script>
-  function getFiles(data) {
-    return data.map((r, idx) => {
+  function $(selector) {
+    return document.querySelector(selector);
+  }
+
+  class VtIcon extends HTMLElement {
+    static get observedAttributes() {
+      return ["series"];
+    }
+
+    attributeChangedCallback() {
+      this.render();
+    }
+
+    render() {
       let origin = window.location.origin;
-      let encoded = encodeURIComponent(r.series);
+      let encoded = encodeURIComponent(this.getAttribute("series"));
       let backgroundImage = `url("${origin}/dist/icons/${encoded}")`;
+      this.style = `background-image: ${backgroundImage}`;
+    }
+  }
 
-      return {
-        idx,
-        path: r.path,
-        watched: r.watched,
-        series: r.series,
-        episode: r.episode,
-        latest: r.latest,
-        style: {
-          backgroundImage,
-        },
+  class VtLink extends HTMLElement {
+    connectedCallback() {
+      this.addEventListener("click", this.handleClick);
+    }
+
+    disconnectedCallback() {
+      this.removeEventListener("click", this.handleClick);
+    }
+
+    static get observedAttributes() {
+      return ["idx", "series", "text", "path"];
+    }
+
+    attributeChangedCallback() {
+      this.render();
+    }
+
+    render() {
+      this.innerText = this.getAttribute("path");
+    }
+
+    async handleClick() {
+      $("#vt-app")?.openFile({ path: this.getAttribute("path") });
+    }
+  }
+
+  class VtWatched extends HTMLElement {
+    connectedCallback() {
+      this.render();
+      this.addEventListener("click", this.handleClick);
+    }
+
+    disconnectedCallback() {
+      this.removeEventListener("click", this.handleClick);
+    }
+
+    static get observedAttributes() {
+      return ["watched", "latest", "path"];
+    }
+
+    attributeChangedCallback() {
+      this.render();
+    }
+
+    render() {
+      let watched = this.getAttribute("watched");
+      let latest = this.getAttribute("latest");
+
+      if (watched) {
+        this.innerText = `watched: ${watched?.slice(0, 10)}`;
+      } else if (latest) {
+        this.innerText = `last: ${latest}`;
+      }
+    }
+
+    async handleClick() {
+      $("#vt-app")?.setWatched({
+        path: this.getAttribute("path"),
+        watched: !this.getAttribute("watched"),
+      });
+    }
+  }
+
+  class VtFile extends HTMLElement {}
+
+  class VtApp extends HTMLElement {
+    connectedCallback() {
+      this.state = {
+        windowSize: 100,
+        loading: true,
+        iconsLoading: false,
+        data: [],
+        files: [],
+        recents: [],
+        cursor: -1,
+        filterString: "",
       };
-    });
-  }
 
-  function groupBySeries(files) {
-    let series = {};
-    let idx = 0;
-    for (let file of files) {
-      if (series[file.series]) {
-        series[file.series].push(file);
-      } else {
-        series[file.series] = [file];
-      }
+      this.fetchData();
+      this.handleKeyboardEvents();
     }
-    let output = [];
-    for (let key in series) {
-      let subFiles = series[key];
-      subFiles.sort((a, b) => b.episode - a.episode);
-      subFiles.map((f) => (f.idx = idx++));
-      output = output.concat(subFiles);
+
+    setState(partialState) {
+      this.state = { ...this.state, ...partialState };
+      this.render();
     }
-    return output;
-  }
 
-  function filterByString(files, filterString) {
-    let filter = filterString.toLowerCase();
-    let idx = 0;
-    let output = [];
-    for (let file of files) {
-      let series = file.series.toLowerCase();
-      if (series.indexOf(filter) !== -1) {
-        file.idx = idx++;
-        output.push(file);
-      }
+    async fetchData() {
+      this.setState({ loading: true });
+      const res = await fetch("/data");
+      const data = await res.json();
+      this.setState({
+        data,
+        recents: data.filter((r) => !!r.watched).slice(0, 9),
+      });
+
+      this.recalculate();
     }
-    return output;
-  }
 
-  async function fetchData() {
-    const res = await fetch("/data");
-    const json = await res.json();
-    return json;
-  }
-
-  async function sendOpenFile(file) {
-    return await fetch(`/open?name=${encodeURIComponent(file.path)}`);
-  }
-
-  async function sendToggleWatched(file) {
-    let params = new URLSearchParams();
-    params.set("name", file.path);
-    params.set("setWatched", !file.watched);
-    params.set("series", file.series);
-    params.set("episode", file.episode);
-
-    return await fetch(`/update?${params.toString()}`);
-  }
-
-  async function sendGetIcons() {
-    return await fetch("/icons");
-  }
-
-  function debounce(fn) {
-    let window = 20;
-    let last = 0;
-    return function (arg) {
-      let now = new Date().getTime();
-      if (now - last > window) {
-        last = now;
-        fn(arg);
+    recalculate() {
+      const { data, filterString } = this.state;
+      let files = data.map((r, idx) => {
+        return {
+          idx,
+          path: r.path,
+          watched: r.watched,
+          series: r.series,
+          episode: r.episode,
+          latest: r.latest,
+        };
+      });
+      if (filterString !== "") {
+        let filter = filterString.toLowerCase();
+        let idx = 0;
+        let res = [];
+        for (let file of files) {
+          let series = file.series.toLowerCase();
+          if (series.indexOf(filter) !== -1) {
+            file.idx = idx++;
+            res.push(file);
+          }
+        }
+        files = res;
       }
-    };
-  }
+      this.setState({ files, loading: false });
+    }
 
-  document.addEventListener("alpine:init", () => {
-    Alpine.data("app", () => ({
-      loading: true,
-      iconsLoading: false,
-      data: [],
-      files: [],
-      recents: [],
-      cursor: -1,
-      groupBySeries: false,
-      filterString: "",
+    async setWatched({ path, watched }) {
+      let params = new URLSearchParams();
+      params.set("name", path);
+      params.set("setWatched", !!watched);
+      await fetch(`/update?${params.toString()}`);
+      this.fetchData();
+    }
 
-      init() {
-        this.fetchData();
-        this.handleKeyboardEvents();
-      },
+    async openFile({ idx, path }) {
+      const newIdx =
+        idx ?? this.state.files.find((file) => file.path === path)?.idx;
+      if (newIdx != null) {
+        this.setState({ cursor: newIdx });
+      }
+      return await fetch(`/open?name=${encodeURIComponent(path)}`);
+    }
 
-      async fetchData() {
-        this.loading = true;
-        const data = await fetchData();
+    handleKeyboardEvents() {
+      function debounce(fn) {
+        let window = 20;
+        let last = 0;
+        return function (arg) {
+          let now = new Date().getTime();
+          if (now - last > window) {
+            last = now;
+            fn(arg);
+          }
+        };
+      }
 
-        this.data = data;
-        this.recents = data.filter((r) => !!r.watched).slice(0, 9);
-
-        this.recalculate();
-      },
-
-      recalculate() {
-        this.loading = false;
-        this.files = getFiles(this.data);
-        if (this.groupBySeries) {
-          this.files = groupBySeries(this.files);
-        }
-        if (this.filterString !== "") {
-          this.files = filterByString(this.files, this.filterString);
-        }
-      },
-
-      async openFile(file) {
-        this.cursor = file.idx;
-        sendOpenFile(file);
-      },
-
-      onSearchKeydown(e) {
-        if (e.key === "Escape") {
-          this.unfocusSearchInput();
-        }
-      },
-
-      onSearchInput(e) {
-        if (e.data === "/") {
-          e.target.value = this.filterString;
-          e.preventDefault();
-          this.unfocusSearchInput();
-          return;
-        }
-        this.filterString = e.target.value;
-        this.cursor = 0;
-        this.recalculate();
-      },
-
-      async toggleWatched(file) {
-        this.cursor = file.idx;
-        sendToggleWatched(file);
-        this.fetchData();
-      },
-
-      async sendGetIcons() {
-        this.iconsLoading = true;
-        await sendGetIcons();
-        this.iconsLoading = false;
-        window.location = "/";
-      },
-
-      updateCursor(fn) {
-        this.cursor = fn(this.cursor);
-        if (this.cursor < -1) {
-          this.cursor = -1;
+      const updateCursor = (fn) => {
+        let cursor = fn(this.state.cursor);
+        if (cursor < -1) {
+          cursor = -1;
           window.scroll(0, 0);
         } else {
-          if (this.cursor > this.files.length) {
-            this.cursor = this.files.length - 1;
+          if (cursor > this.state.files.length) {
+            cursor = this.state.files.length - 1;
           }
-          let file = this.files[this.cursor];
+          if (cursor > this.state.windowSize) {
+            cursor = this.state.windowSize - 1;
+          }
+          let file = this.state.files[cursor];
           if (file) {
-            let e = document.querySelector(`a[data-title='${file.idx}']`);
+            let e = $(`vt-file:nth-child(${cursor + 1})`);
             if (e) {
               e.scrollIntoViewIfNeeded();
             }
           }
         }
-      },
+        this.setState({ cursor });
+      };
 
-      focusSearchInput() {
-        let e = document.querySelector(".search-input");
-        if (e) {
-          e.focus();
+      window.addEventListener(
+        "keydown",
+        debounce((e) => {
+          if (e.target !== document.body) {
+            return;
+          }
+          if (e.key === "K") {
+            updateCursor((x) => x - 10);
+          }
+          if (e.key === "k") {
+            updateCursor((x) => x - 1);
+          }
+          if (e.key === "j") {
+            updateCursor((x) => x + 1);
+          }
+          if (e.key === "J") {
+            updateCursor((x) => x + 10);
+          }
+          if (e.key === "o") {
+            let file = this.state.files[this.state.cursor];
+            if (file) {
+              this.openFile({ idx: file.idx, path: file.path });
+            }
+          }
+          if (e.key === "M" || e.key === "W") {
+            let file = this.state.files[this.state.cursor];
+            if (file) {
+              this.setState({ cursor: file.idx });
+              this.setWatched({
+                path: file.path,
+                watched: !file.watched,
+              });
+            }
+          }
+          if (e.key === "r") {
+            this.fetchData();
+          }
+          if (e.key === "I") {
+            this.setState({ iconsLoading: true });
+            fetch("/icons").finally((_) => {
+              this.setState({ iconsLoading: false });
+              window.location = "/";
+            });
+          }
+          if (e.key === "/") {
+            e.preventDefault();
+            $(".search-input")?.focus();
+          }
+        }),
+      );
+
+      $("#search-input")?.addEventListener("input", (e) => {
+        if (e.data === "/") {
+          e.target.value = this.state.filterString;
+          e.preventDefault();
+          $(".search-input")?.blur();
+          return;
         }
-      },
+        this.setState({ filterString: e.target.value, cursor: 0 });
+        this.recalculate();
+      });
+    }
 
-      unfocusSearchInput() {
-        let e = document.querySelector(".search-input");
-        if (e) {
-          e.blur();
+    render() {
+      const { loading, iconsLoading, recents, files } = this.state;
+
+      let filesLoading = this.querySelector("#files-loading");
+      if (filesLoading) {
+        filesLoading.innerText = `files loading: ${loading}`;
+      }
+
+      let iconsLoadingElem = this.querySelector("#icons-loading");
+      if (iconsLoadingElem) {
+        iconsLoadingElem.innerText = `icons loading: ${iconsLoading}`;
+      }
+
+      let recentlyWatched = this.querySelector("#recently-watched");
+      if (recentlyWatched) {
+        recentlyWatched.innerHTML = "";
+        for (let file of recents) {
+          let recentElement = document.createElement("div");
+          recentElement.setAttribute("class", "recent");
+          recentElement.innerText = file.path;
+          recentlyWatched.appendChild(recentElement);
         }
-      },
+      }
 
-      handleKeyboardEvents() {
-        window.addEventListener(
-          "keydown",
-          debounce((e) => {
-            if (e.target !== document.body) {
-              return;
-            }
-            if (e.key === "K") {
-              this.updateCursor((x) => x - 10);
-            }
-            if (e.key === "k") {
-              this.updateCursor((x) => x - 1);
-            }
-            if (e.key === "j") {
-              this.updateCursor((x) => x + 1);
-            }
-            if (e.key === "J") {
-              this.updateCursor((x) => x + 10);
-            }
-            if (e.key === "o") {
-              let file = this.files[this.cursor];
-              if (file) {
-                this.openFile(file);
-              }
-            }
-            if (e.key === "M" || e.key === "W") {
-              let file = this.files[this.cursor];
-              if (file) {
-                this.toggleWatched(file);
-              }
-            }
-            if (e.key === "r") {
-              this.fetchData();
-            }
-            if (e.key === "I") {
-              this.sendGetIcons();
-            }
-            if (e.key === "g") {
-              this.groupBySeries = !this.groupBySeries;
-              this.cursor = 0;
-              this.recalculate();
-            }
-            if (e.key === "/") {
-              e.preventDefault();
-              this.focusSearchInput();
-            }
-          }),
-        );
-      },
-    }));
-  });
+      let filesContainer = this.querySelector("#files");
+      if (filesContainer) {
+        while (filesContainer.firstChild) {
+          filesContainer.removeChild(filesContainer.firstChild);
+        }
+        for (let file of files.slice(0, this.state.windowSize)) {
+          let fileElement = document.createElement("vt-file");
+          fileElement.setAttribute(
+            "class",
+            [
+              file.watched ? "done" : "",
+              this.state.cursor === file.idx ? "cursor" : "",
+            ].join(" "),
+          );
+
+          let iconElement = document.createElement("vt-icon");
+          iconElement.setAttribute("series", file.series);
+
+          let linkElement = document.createElement("vt-link");
+          linkElement.setAttribute("idx", file.idx);
+          linkElement.setAttribute("series", file.series);
+          linkElement.setAttribute("path", file.path);
+
+          let watchedElement = document.createElement("vt-watched");
+          watchedElement.setAttribute("path", file.path);
+          if (file.watched) {
+            watchedElement.setAttribute("watched", file.watched);
+          }
+          if (file.latest) {
+            watchedElement.setAttribute("latest", file.latest);
+          }
+
+          fileElement.appendChild(iconElement);
+          fileElement.appendChild(linkElement);
+          fileElement.appendChild(watchedElement);
+          filesContainer.appendChild(fileElement);
+        }
+
+        if (files.length > this.state.windowSize) {
+          let moreFilesElement = document.createElement("div");
+          moreFilesElement.setAttribute("class", "more-files");
+          moreFilesElement.innerText = `${files.length - this.state.windowSize} more files out of view limit (${this.state.windowSize})`;
+          filesContainer.appendChild(moreFilesElement);
+        }
+      }
+    }
+  }
+
+  customElements.define("vt-icon", VtIcon);
+  customElements.define("vt-link", VtLink);
+  customElements.define("vt-watched", VtWatched);
+  customElements.define("vt-file", VtFile);
+  customElements.define("vt-app", VtApp);
 </script>
