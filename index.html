@@ -8,11 +8,12 @@
       <span>o: open current file</span>
       <span>k: move cursor up</span>
       <span>j: move cursor down</span>
+      <span id="filter-watched">f: filter watched</span>
       <span>W/M: mark as watched</span>
       <span>r: refresh</span>
       <span>I: fetch icons and reload page</span>
-      <span id="files-loading">files loading:</span>
-      <span id="icons-loading">icons loading:</span>
+      <span id="files-loading"></span>
+      <span id="icons-loading"></span>
       <input
         id="search-input"
         class="search-input"
@@ -228,6 +229,7 @@
         recents: [],
         cursor: -1,
         filterString: "",
+        filterWatched: false,
       };
 
       this.fetchData();
@@ -252,7 +254,7 @@
     }
 
     recalculate() {
-      const { data, filterString } = this.state;
+      const { data, filterString, filterWatched } = this.state;
       let files = data.map((r, idx) => {
         return {
           idx,
@@ -263,13 +265,15 @@
           latest: r.latest,
         };
       });
-      if (filterString !== "") {
+      if (filterString !== "" || filterWatched) {
         let filter = filterString.toLowerCase();
         let idx = 0;
         let res = [];
         for (let file of files) {
           let series = file.series.toLowerCase();
-          if (series.indexOf(filter) !== -1) {
+          let filterCond = series.indexOf(filter) !== -1;
+          let watchedCond = filterWatched ? !file.watched : true;
+          if (filterCond && watchedCond) {
             file.idx = idx++;
             res.push(file);
           }
@@ -338,6 +342,12 @@
           if (e.target !== document.body) {
             return;
           }
+          if (e.key === "f") {
+            this.setState({
+              filterWatched: !this.state.filterWatched,
+            });
+            this.recalculate();
+          }
           if (e.key === "K") {
             updateCursor((x) => x - 10);
           }
@@ -395,8 +405,23 @@
       });
     }
 
+    $do(selector, fn) {
+      let elem = this.querySelector(selector);
+      if (elem) {
+        fn(elem);
+      }
+    }
+
     render() {
-      const { loading, iconsLoading, recents, files } = this.state;
+      const { loading, iconsLoading, recents, files, filterWatched } =
+        this.state;
+
+      let filterWatchedDisplay = this.querySelector("#filter-watched");
+      if (filterWatchedDisplay) {
+        filterWatchedDisplay.style.fontWeight = filterWatched
+          ? "bold"
+          : "normal";
+      }
 
       let filesLoading = this.querySelector("#files-loading");
       if (filesLoading) {
