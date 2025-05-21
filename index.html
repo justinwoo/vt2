@@ -190,7 +190,7 @@
     }
 
     static get observedAttributes() {
-      return ["watched", "latest", "path"];
+      return ["watched", "series", "latest", "path"];
     }
 
     attributeChangedCallback() {
@@ -211,6 +211,8 @@
     async handleClick() {
       $("#vt-app")?.setWatched({
         path: this.getAttribute("path"),
+        series: this.getAttribute("series"),
+        episode: this.getAttribute("episode"),
         watched: !this.getAttribute("watched"),
       });
     }
@@ -283,9 +285,11 @@
       this.setState({ files, loading: false });
     }
 
-    async setWatched({ path, watched }) {
+    async setWatched({ path, episode, series, watched }) {
       let params = new URLSearchParams();
       params.set("name", path);
+      params.set("series", series);
+      params.set("episode", episode);
       params.set("setWatched", !!watched);
       await fetch(`/update?${params.toString()}`);
       this.fetchData();
@@ -372,7 +376,9 @@
               this.setState({ cursor: file.idx });
               this.setWatched({
                 path: file.path,
+                episode: file.episode,
                 watched: !file.watched,
+                series: file.series,
               });
             }
           }
@@ -469,6 +475,8 @@
 
           let watchedElement = document.createElement("vt-watched");
           watchedElement.setAttribute("path", file.path);
+          watchedElement.setAttribute("series", file.series);
+          watchedElement.setAttribute("episode", file.episode);
           if (file.watched) {
             watchedElement.setAttribute("watched", file.watched);
           }

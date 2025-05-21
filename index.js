@@ -179,6 +179,7 @@ async function deleteEntry(db, filename) {
 }
 
 async function upsertEntry(db, filename, series, episode) {
+  console.log('upsertEntry', filename, series, episode);
   return await db
     .prepare(
       `
