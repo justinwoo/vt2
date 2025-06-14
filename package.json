@@ -4,8 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
-    "better-sqlite3": "^8.4.0",
+    "better-sqlite3": "^11.10.0",
     "object-hash": "^3.0.0",
-    "prettier": "^3.5.1"
+    "prettier": "^3.5.3"
   }
 }
